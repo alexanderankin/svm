@@ -1,0 +1,129 @@
+#!/usr/bin/env bash
+
+if [ "${0}" != "${BASH_SOURCE[0]}" ] ; then
+  echo "This script should not be sourced" >&2;
+  return 1;
+fi
+
+set -eu -o pipefail
+
+# setting DEBUG variable sets bash debug opt
+if ! [ -z ${DEBUG+x} ]; then set -x; fi
+
+cleanup() {
+  last_return=$?
+  if ! [[ "$last_return" == "0" ]] ; then echo whoops; fi;
+  exit $last_return
+}
+
+trap "cleanup" EXIT
+
+# core library functions
+
+FILE_SVM_FOLDER=~/.config/svm;
+FILE_SVM_SW_LIST=software.list;
+
+init_files() {
+  mkdir -p $FILE_SVM_FOLDER;
+  touch $FILE_SVM_FOLDER/$FILE_SVM_SW_LIST;
+}
+
+# completions
+
+generating_completions() {
+  if ! [[ ${COMP_POINT:-} || ${COMP_LINE:-} || ${COMP_TYPE:-} || ${COMP_KEY:-} ]]; then
+    return 1;
+  else
+    return 0;
+  fi
+}
+
+generate_completions() {
+  case $COMP_LINE in
+  "svm software add --type template"*) ;;
+  "svm software add --type g"*) echo github;;
+  "svm software add --type t"*) echo template;;
+  "svm software add --type"*)
+    echo "github";
+    echo "template";
+    ;;
+  "svm software add"*) echo "--type";;
+  "svm software l"*) echo list;;
+  "svm software a"*) echo add;;
+  "svm software r"*) echo remove;;
+  "svm software "*)
+    echo "list"
+    echo "add"
+    echo "remove"
+    ;;
+  "svm h"*) echo help;;
+  "svm s"*) echo software;;
+  "svm v"*) echo version;;
+  "svm "*)
+    echo help
+    echo version
+    echo software
+    ;;
+  *)
+    echo --help
+    ;;
+  esac
+  exit 0
+}
+
+if generating_completions ; then generate_completions; fi
+
+# cli api
+
+help() {
+  cat <<EOF
+    welcome to svm
+
+    commands:
+      help                - print help
+      version             - print version
+      software            - software menu
+        list              - list available software
+        add               - add available software
+          --type github   - download from github releases page (future)
+          --type template - download from url template
+        remove            - remove available software
+
+      software add
+EOF
+}
+
+version() {
+  echo "0.0.0"
+}
+
+software_list() {
+  init_files;
+  cat $FILE_SVM_FOLDER/$FILE_SVM_SW_LIST;
+}
+
+software_add() {
+  echo "software add is not implemented yet, but here are your args:"
+  for i in "$@" ; do
+      echo $i
+  done
+}
+
+software() {
+  sub_command=${1:-list}
+  if [[ $# -gt 1 ]]; then shift; fi;
+
+  case $sub_command in
+  list) software_list;;
+  add) software_add "$@";;
+  *)
+    echo unknown or not yet implemented
+    ;;
+  esac
+}
+
+command=${1:-help}
+if [[ $# -gt 1 ]]; then shift; fi;
+
+$command "$@"
+exit 0
